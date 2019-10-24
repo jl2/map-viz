@@ -21,18 +21,16 @@
   (declare (ignorable output-file-name shape-file-name))
 
   (gdal:gdal-all-register)
-
-  (let* (()
-         (dataset       ))
-
-    (loop
-       with dataset = (gdal:gdal-open-ex shape-file-name gdal:+of-vector+ +np+ +np+ +np+)
-       for i below (gdal:ogr-ds-get-layer-count dataset)
-       for layer = (gdal:ogr-ds-get-layer dataset i)
-       do 
-         (multiple-value-bind (min-x max-x min-y max-y) (gdal:get-layer-envelope layer)
-           (format t "Layer ~a bounding box is: (~a ~a) - (~a ~a)~%"
-                   (gdal:ogr-l-get-name layer)
-                   min-x min-y max-x max-y))
-         (autowrap:free layer)))
-    (autowrap:free dataset)))
+  (loop
+     with dataset = (gdal:gdal-open-ex shape-file-name gdal:+of-vector+ +np+ +np+ +np+)
+     for i below (gdal:ogr-ds-get-layer-count dataset)
+     for layer = (gdal:ogr-ds-get-layer dataset i)
+     for layer-name = (gdal:ogr-l-get-name layer)
+     do
+       (format t "~a has ~a features.~%" layer-name (gdal:ogr-l-get-feature-count layer 1))
+       (multiple-value-bind (min-x max-x min-y max-y) (gdal:get-layer-envelope layer)
+          (format t
+                  "Layer ~a bounding box is: (~a ~a) - (~a ~a)~%"
+                  layer-name min-x min-y max-x max-y)
+          (autowrap:free layer))
+     finally (autowrap:free dataset)))
