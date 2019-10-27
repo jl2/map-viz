@@ -22,7 +22,9 @@
                               (output-file-name)
                               (width 1600)
                               (height 1600)
-                              (image-type "BMP"))
+                              (stroke-width 1.0)
+                              (image-type "BMP")
+                              (show t))
   (declare (ignorable output-file-name shape-file-name))
   (ensure-directories-exist output-file-name)
 
@@ -31,7 +33,8 @@
            :width width
            :height height
            :codec-name image-type)
-      ((rect bl:rect))
+      ((rect bl:rect)
+       (line bl:line))
 
     (gdal:gdal-all-register)
     (let ((dataset (gdal:gdal-open-ex
@@ -41,7 +44,32 @@
       (format t "dataset: ~a~%" dataset)
       (multiple-value-bind (x-min x-max y-min y-max) (gdal:get-dataset-envelope dataset)
         (format t "x-min ~a y-min ~a x-max ~a y-max ~a w ~a h ~a~%" x-min y-min x-max y-max (- x-max x-min) (- y-max y-min))
-        (bl:setup-window ctx :width width :height height :x-min x-min :y-min y-min :x-max x-max :y-max y-max :stroke-width 10.0)
+        (bl:setup-window ctx
+                         :width width
+                         :height height
+                         :x-min x-min :y-min y-min
+                         :x-max x-max :y-max y-max
+                         :stroke-width 0.00001)
+        (setf (bl:line.x0 line) x-min)
+        (setf (bl:line.y0 line) y-min)
+
+        (setf (bl:line.x1 line) x-max)
+        (setf (bl:line.y1 line) y-max)
+        (bl:context-set-stroke-width ctx  stroke-width)
+        (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
+        (bl:context-set-stroke-style-rgba32 ctx (random #16rffffffff))
+        (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
+        
+        (setf (bl:line.x0 line) x-min)
+        (setf (bl:line.y0 line) y-max)
+
+        (setf (bl:line.x1 line) x-max)
+        (setf (bl:line.y1 line) y-min)
+        (bl:context-set-stroke-width ctx  stroke-width)
+        (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
+        (bl:context-set-stroke-style-rgba32 ctx (random #16rffffffff))
+        (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
+
         (setf (bl:rect.x rect) x-min)
         (setf (bl:rect.y rect) y-min)
         (setf (bl:rect.w rect) (- x-max x-min))
@@ -49,7 +77,9 @@
         (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
         (bl:context-set-stroke-style-rgba32 ctx #16rffffffff)
         ;; (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
-        (bl:context-set-stroke-width ctx 20.0)
+        (bl:context-set-stroke-width ctx 0.01)
         (bl:lookup-error (bl:context-stroke-geometry ctx bl:+geometry-type-rectd+ rect)))
       ;; (autowrap:free dataset)
-      )))
+      ))
+  (when show
+    (uiop:run-program (format nil "display ~a" output-file-name))))
