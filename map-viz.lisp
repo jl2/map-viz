@@ -17,6 +17,8 @@
 
 (in-package :map-viz)
 
+(defconstant +np+ (cffi:null-pointer))
+
 (defun show-bounding-boxes (&key
                               (shape-file-name)
                               (output-file-name)
@@ -37,49 +39,45 @@
        (line bl:line))
 
     (gdal:gdal-all-register)
-    (let ((dataset (gdal:gdal-open-ex
-                    shape-file-name
-                    gdal:+of-vector+
-                    gdal:+np+ gdal:+np+ gdal:+np+)))
+    (let ((dataset (gdal:gdal-open-ex shape-file-name
+                                      gdal:+of-vector+
+                                      +np+ +np+ +np+)))
       (format t "dataset: ~a~%" dataset)
       (multiple-value-bind (x-min x-max y-min y-max) (gdal:get-dataset-envelope dataset)
-        (format t "x-min ~a y-min ~a x-max ~a y-max ~a w ~a h ~a~%" x-min y-min x-max y-max (- x-max x-min) (- y-max y-min))
-        (bl:setup-window ctx
-                         :width width
-                         :height height
-                         :x-min x-min :y-min y-min
-                         :x-max x-max :y-max y-max
-                         :stroke-width 0.00001)
-        (setf (bl:line.x0 line) x-min)
-        (setf (bl:line.y0 line) y-min)
+        (let ((dx (- x-max x-min))
+              (dy (- y-max y-min)))
+          (format t "x-min ~a y-min ~a x-max ~a y-max ~a w ~a h ~a~%" x-min y-min x-max y-max dx dy)
+          (bl:setup-window ctx (- x-min (/ dx 20.0)) (+ x-max (/ dx 20.0)) (- y-min (/ dy 20.0)) (+ y-max (/ dy 20.0)) width height stroke-width)
+          (setf (bl:line.x0 line) x-min)
+          (setf (bl:line.y0 line) y-min)
 
-        (setf (bl:line.x1 line) x-max)
-        (setf (bl:line.y1 line) y-max)
-        (bl:context-set-stroke-width ctx  stroke-width)
-        (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
-        (bl:context-set-stroke-style-rgba32 ctx (random #16rffffffff))
-        (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
-        
-        (setf (bl:line.x0 line) x-min)
-        (setf (bl:line.y0 line) y-max)
+          (setf (bl:line.x1 line) x-max)
+          (setf (bl:line.y1 line) y-max)
+          ;; (bl:context-set-stroke-width ctx  stroke-width)
+          (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
+          (bl:context-set-stroke-style-rgba32 ctx #16rff00ff00)
+          (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
 
-        (setf (bl:line.x1 line) x-max)
-        (setf (bl:line.y1 line) y-min)
-        (bl:context-set-stroke-width ctx  stroke-width)
-        (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
-        (bl:context-set-stroke-style-rgba32 ctx (random #16rffffffff))
-        (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
+          (setf (bl:line.x0 line) x-min)
+          (setf (bl:line.y0 line) y-max)
 
-        (setf (bl:rect.x rect) x-min)
-        (setf (bl:rect.y rect) y-min)
-        (setf (bl:rect.w rect) (- x-max x-min))
-        (setf (bl:rect.h rect) (- y-max y-min))
-        (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
-        (bl:context-set-stroke-style-rgba32 ctx #16rffffffff)
-        ;; (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
-        (bl:context-set-stroke-width ctx 0.01)
-        (bl:lookup-error (bl:context-stroke-geometry ctx bl:+geometry-type-rectd+ rect)))
-      ;; (autowrap:free dataset)
-      ))
+          (setf (bl:line.x1 line) x-max)
+          (setf (bl:line.y1 line) y-min)
+          ;; (bl:context-set-stroke-width ctx  stroke-width)
+          (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
+          (bl:context-set-stroke-style-rgba32 ctx #16rff0000ff)
+          (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
+
+          (setf (bl:rect.x rect) x-min)
+          (setf (bl:rect.y rect) y-min)
+          (setf (bl:rect.w rect) (- x-max x-min))
+          (setf (bl:rect.h rect) (- y-max y-min))
+          (bl:context-set-comp-op ctx bl:+comp-op-src-over+)
+          (bl:context-set-stroke-style-rgba32 ctx #16rffffffff)
+          ;; (bl:context-stroke-geometry ctx bl:+geometry-type-line+ line)
+          ;; (bl:context-set-stroke-width ctx 0.01)
+          (bl:lookup-error (bl:context-stroke-geometry ctx bl:+geometry-type-rectd+ rect)))
+        ;; (autowrap:free dataset)
+        )))
   (when show
     (uiop:run-program (format nil "display ~a" output-file-name))))
